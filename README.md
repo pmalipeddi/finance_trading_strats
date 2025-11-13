@@ -199,9 +199,9 @@ python3 mean_reversion_strategy.py
 #### Moving Average Crossover API (Port 8000)
 
 ```bash
-python3 api.py
+python3 moving_average_crossover_api.py
 # Or
-uvicorn api:app --reload --host 0.0.0.0 --port 8000
+uvicorn moving_average_crossover_api:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Access at: `http://localhost:8000/docs`
@@ -209,9 +209,9 @@ Access at: `http://localhost:8000/docs`
 #### Mean Reversion API (Port 8001)
 
 ```bash
-python3 mean_reversion.py
+python3 mean_reversion_api.py
 # Or
-uvicorn mean_reversion:app --reload --host 0.0.0.0 --port 8001
+uvicorn mean_reversion_api:app --reload --host 0.0.0.0 --port 8001
 ```
 
 Access at: `http://localhost:8001/docs`
@@ -572,8 +572,8 @@ finance_trading_strats/
 ├── requirements.txt                   # Python dependencies
 ├── moving_average_crossover_strategy.py  # MA Crossover strategy
 ├── mean_reversion_strategy.py         # Mean Reversion strategy
-├── api.py                             # FastAPI for MA Crossover
-├── mean_reversion.py                  # FastAPI for Mean Reversion
+├── moving_average_crossover_api.py     # FastAPI for MA Crossover
+├── mean_reversion_api.py               # FastAPI for Mean Reversion
 ├── mcp_server.py                      # MCP server (for Claude Desktop)
 ├── mcp_client.py                      # Example MCP client
 ├── generate_mcp_config.py             # Config generator helper
