@@ -1,149 +1,147 @@
 #!/usr/bin/env python3
 """
-Helper script to generate Claude Desktop MCP configuration
+Generate MCP configuration file for trading strategies server.
+
+This script generates the mcp_config.json file with all available
+trading strategies and their configurations.
 """
-import os
+
 import json
-import sys
-from pathlib import Path
+import os
+from typing import Dict, List, Any
 
-def find_python_executable():
-    """Find the Python executable to use"""
-    # First, try to use the current Python interpreter
-    python_exe = sys.executable
-    
-    # Check if we're in a virtual environment
-    venv_python = Path(__file__).parent / "venv" / "bin" / "python"
-    if venv_python.exists():
-        return str(venv_python.absolute())
-    
-    # Check for venv on Windows
-    venv_python_win = Path(__file__).parent / "venv" / "Scripts" / "python.exe"
-    if venv_python_win.exists():
-        return str(venv_python_win.absolute())
-    
-    # Fall back to current Python
-    return python_exe
 
-def get_claude_config_path():
-    """Get the path to Claude Desktop config file based on OS"""
-    system = sys.platform
-    
-    if system == "darwin":  # macOS
-        config_path = Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
-    elif system == "win32":  # Windows
-        config_path = Path(os.getenv("APPDATA")) / "Claude" / "claude_desktop_config.json"
-    else:  # Linux
-        config_path = Path.home() / ".config" / "Claude" / "claude_desktop_config.json"
-    
-    return config_path
+def generate_strategy_config(strategy_name: str, description: str, 
+                            tools: List[str], parameters: Dict[str, Any]) -> Dict[str, Any]:
+    """Generate configuration for a trading strategy."""
+    return {
+        "name": strategy_name,
+        "description": description,
+        "tools": tools,
+        "parameters": parameters
+    }
 
-def generate_config():
-    """Generate MCP server configuration"""
-    project_root = Path(__file__).parent.absolute()
-    mcp_server_path = project_root / "mcp_server.py"
-    python_exe = find_python_executable()
+
+def generate_mcp_config() -> Dict[str, Any]:
+    """Generate complete MCP configuration."""
     
+    # Mean Reversion Strategy
+    mean_reversion_config = generate_strategy_config(
+        strategy_name="mean_reversion",
+        description="Mean reversion strategy that trades when prices deviate from their historical mean",
+        tools=[
+            "backtest_mean_reversion",
+            "optimize_mean_reversion",
+            "get_mean_reversion_signals"
+        ],
+        parameters={
+            "lookback_period": {
+                "default": 20,
+                "description": "Number of periods for calculating mean and standard deviation"
+            },
+            "entry_threshold": {
+                "default": 2.0,
+                "description": "Number of standard deviations from mean to trigger entry"
+            },
+            "exit_threshold": {
+                "default": 0.5,
+                "description": "Number of standard deviations from mean to trigger exit"
+            }
+        }
+    )
+    
+    # Moving Average Crossover Strategy
+    ma_crossover_config = generate_strategy_config(
+        strategy_name="moving_average_crossover",
+        description="Moving average crossover strategy that generates signals when short MA crosses long MA",
+        tools=[
+            "backtest_moving_average_crossover",
+            "optimize_moving_average_crossover",
+            "get_moving_average_crossover_signals"
+        ],
+        parameters={
+            "short_window": {
+                "default": 50,
+                "description": "Period for short-term moving average"
+            },
+            "long_window": {
+                "default": 200,
+                "description": "Period for long-term moving average"
+            }
+        }
+    )
+    
+    # Momentum Price & Volume Strategy
+    momentum_price_vol_config = generate_strategy_config(
+        strategy_name="momentum_price_vol",
+        description="Momentum breakout strategy based on price momentum and volume surge analysis",
+        tools=[
+            "backtest_momentum_price_vol",
+            "optimize_momentum_price_vol",
+            "get_momentum_price_vol_signals"
+        ],
+        parameters={
+            "price_lookback": {
+                "default": 20,
+                "description": "Lookback period for calculating price momentum"
+            },
+            "volume_lookback": {
+                "default": 20,
+                "description": "Lookback period for calculating average volume"
+            },
+            "price_threshold": {
+                "default": 5.0,
+                "description": "Minimum percentage price change to trigger momentum signal"
+            },
+            "volume_threshold": {
+                "default": 1.5,
+                "description": "Volume multiplier to identify volume surge (e.g., 1.5 = 150% of average)"
+            }
+        }
+    )
+    
+    # Complete MCP configuration
     config = {
         "mcpServers": {
             "trading-strategies": {
-                "command": python_exe,
-                "args": [str(mcp_server_path)],
-                "cwd": str(project_root),
-                "env": {}
+                "command": "python",
+                "args": ["mcp_server.py"],
+                "description": "Trading strategies MCP server with multiple strategy implementations",
+                "strategies": [
+                    mean_reversion_config,
+                    ma_crossover_config,
+                    momentum_price_vol_config
+                ],
+                "version": "1.3.0",
+                "capabilities": [
+                    "backtesting",
+                    "optimization",
+                    "signal_generation"
+                ]
             }
         }
     }
     
     return config
 
+
 def main():
-    """Main function"""
-    print("Trading Strategies MCP Server - Configuration Generator")
-    print("=" * 60)
+    """Generate and save MCP configuration file."""
+    config = generate_mcp_config()
     
-    project_root = Path(__file__).parent.absolute()
-    mcp_server_path = project_root / "mcp_server.py"
+    # Write to file
+    output_file = "mcp_config.json"
+    with open(output_file, "w") as f:
+        json.dump(config, f, indent=2)
     
-    # Check if mcp_server.py exists
-    if not mcp_server_path.exists():
-        print(f"Error: mcp_server.py not found at {mcp_server_path}")
-        sys.exit(1)
+    print(f"✅ MCP configuration generated successfully: {output_file}")
+    print(f"\n📊 Strategies configured:")
+    for strategy in config["mcpServers"]["trading-strategies"]["strategies"]:
+        print(f"  - {strategy['name']}: {len(strategy['tools'])} tools")
     
-    # Generate configuration
-    config = generate_config()
-    python_exe = find_python_executable()
-    
-    print(f"\nProject Root: {project_root}")
-    print(f"MCP Server: {mcp_server_path}")
-    print(f"Python Executable: {python_exe}")
-    print("\nGenerated Configuration:")
-    print(json.dumps(config, indent=2))
-    
-    # Get Claude config path
-    claude_config_path = get_claude_config_path()
-    print(f"\nClaude Desktop Config Location: {claude_config_path}")
-    
-    # Check if config file exists
-    if claude_config_path.exists():
-        print(f"\n⚠️  Warning: Config file already exists at {claude_config_path}")
-        print("You have two options:")
-        print("1. Manually merge this configuration into your existing file")
-        print("2. Backup your existing file and replace it")
-        
-        response = input("\nDo you want to see the existing config? (y/n): ").lower()
-        if response == 'y':
-            with open(claude_config_path, 'r') as f:
-                existing_config = json.load(f)
-                print("\nExisting Configuration:")
-                print(json.dumps(existing_config, indent=2))
-    else:
-        print(f"\nConfig file doesn't exist yet. It will be created when you add this configuration.")
-    
-    # Create config directory if it doesn't exist
-    claude_config_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    # Ask if user wants to write the config
-    print("\n" + "=" * 60)
-    response = input("Do you want to write this configuration to Claude Desktop config? (y/n): ").lower()
-    
-    if response == 'y':
-        # Read existing config if it exists
-        existing_config = {}
-        if claude_config_path.exists():
-            try:
-                with open(claude_config_path, 'r') as f:
-                    existing_config = json.load(f)
-            except json.JSONDecodeError:
-                print("Warning: Existing config file is not valid JSON. It will be backed up.")
-                backup_path = claude_config_path.with_suffix('.json.backup')
-                claude_config_path.rename(backup_path)
-                print(f"Backup saved to: {backup_path}")
-        
-        # Merge configurations
-        if "mcpServers" not in existing_config:
-            existing_config["mcpServers"] = {}
-        
-        existing_config["mcpServers"]["trading-strategies"] = config["mcpServers"]["trading-strategies"]
-        
-        # Write configuration
-        with open(claude_config_path, 'w') as f:
-            json.dump(existing_config, f, indent=2)
-        
-        print(f"\n✅ Configuration written to: {claude_config_path}")
-        print("\nNext steps:")
-        print("1. Restart Claude Desktop completely")
-        print("2. Open a new conversation")
-        print("3. Ask Claude: 'What MCP tools do you have available?'")
-        print("4. Test with: 'Get the moving average crossover signal for AAPL'")
-    else:
-        print("\nConfiguration not written. Copy the JSON above and add it to your Claude Desktop config manually.")
-        print(f"\nConfig file location: {claude_config_path}")
-        print("\nTo add manually:")
-        print("1. Open the config file in a text editor")
-        print("2. Add the 'trading-strategies' entry to the 'mcpServers' section")
-        print("3. Save and restart Claude Desktop")
+    print(f"\n🔧 Total capabilities: {len(config['mcpServers']['trading-strategies']['capabilities'])}")
+    print(f"📦 Version: {config['mcpServers']['trading-strategies']['version']}")
+
 
 if __name__ == "__main__":
     main()
-

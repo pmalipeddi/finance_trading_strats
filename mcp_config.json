@@ -3,9 +3,84 @@
     "trading-strategies": {
       "command": "python",
       "args": ["mcp_server.py"],
-      "cwd": ".",
-      "env": {}
+      "description": "Trading strategies MCP server with multiple strategy implementations",
+      "strategies": [
+        {
+          "name": "mean_reversion",
+          "description": "Mean reversion strategy that trades when prices deviate from their historical mean",
+          "tools": [
+            "backtest_mean_reversion",
+            "optimize_mean_reversion",
+            "get_mean_reversion_signals"
+          ],
+          "parameters": {
+            "lookback_period": {
+              "default": 20,
+              "description": "Number of periods for calculating mean and standard deviation"
+            },
+            "entry_threshold": {
+              "default": 2.0,
+              "description": "Number of standard deviations from mean to trigger entry"
+            },
+            "exit_threshold": {
+              "default": 0.5,
+              "description": "Number of standard deviations from mean to trigger exit"
+            }
+          }
+        },
+        {
+          "name": "moving_average_crossover",
+          "description": "Moving average crossover strategy that generates signals when short MA crosses long MA",
+          "tools": [
+            "backtest_moving_average_crossover",
+            "optimize_moving_average_crossover",
+            "get_moving_average_crossover_signals"
+          ],
+          "parameters": {
+            "short_window": {
+              "default": 50,
+              "description": "Period for short-term moving average"
+            },
+            "long_window": {
+              "default": 200,
+              "description": "Period for long-term moving average"
+            }
+          }
+        },
+        {
+          "name": "momentum_price_vol",
+          "description": "Momentum breakout strategy based on price momentum and volume surge analysis",
+          "tools": [
+            "backtest_momentum_price_vol",
+            "optimize_momentum_price_vol",
+            "get_momentum_price_vol_signals"
+          ],
+          "parameters": {
+            "price_lookback": {
+              "default": 20,
+              "description": "Lookback period for calculating price momentum"
+            },
+            "volume_lookback": {
+              "default": 20,
+              "description": "Lookback period for calculating average volume"
+            },
+            "price_threshold": {
+              "default": 5.0,
+              "description": "Minimum percentage price change to trigger momentum signal"
+            },
+            "volume_threshold": {
+              "default": 1.5,
+              "description": "Volume multiplier to identify volume surge (e.g., 1.5 = 150% of average)"
+            }
+          }
+        }
+      ],
+      "version": "1.3.0",
+      "capabilities": [
+        "backtesting",
+        "optimization",
+        "signal_generation"
+      ]
     }
   }
 }
-
