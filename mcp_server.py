@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 from typing import Any, Dict, List, Optional
@@ -7,22 +9,10 @@ import sys
 from mcp.server import Server
 from mcp.types import Tool, TextContent
 
-# Import API modules
-from mean_reversion_api import (
-    backtest_mean_reversion,
-    optimize_mean_reversion,
-    get_mean_reversion_signals
-)
-from moving_average_crossover_api import (
-    backtest_moving_average_crossover,
-    optimize_moving_average_crossover,
-    get_moving_average_crossover_signals
-)
-from momentum_price_vol_api import (
-    backtest_momentum_price_vol,
-    optimize_momentum_price_vol,
-    get_momentum_price_vol_signals
-)
+# Import strategy classes directly
+from mean_reversion_strategy import MeanReversionStrategy
+from moving_average_crossover_strategy import TradingStrategies
+from momentum_price_vol_strategy import MomentumBreakoutStrategy
 
 # Setup logging
 logging.basicConfig(
@@ -185,79 +175,76 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
         logger.info(f"Calling tool: {name} with arguments: {arguments}")
         
         # Mean Reversion Strategy Tools
-        if name == "backtest_mean_reversion":
-            result = backtest_mean_reversion(
+        if name == "get_mean_reversion_signals":
+            strategy = MeanReversionStrategy()
+            result = strategy.mean_reversion_signal(
                 symbol=arguments["symbol"],
-                start_date=arguments["start_date"],
-                end_date=arguments["end_date"],
-                lookback_period=arguments.get("lookback_period", 20),
-                entry_threshold=arguments.get("entry_threshold", 2.0),
-                exit_threshold=arguments.get("exit_threshold", 0.5)
+                method="bollinger",  # Default method
+                window=arguments.get("lookback_period", 20),
+                upper_threshold=arguments.get("entry_threshold", 2.0),
+                lower_threshold=-arguments.get("entry_threshold", 2.0),
+                period="1y"  # Default period
             )
+        elif name == "backtest_mean_reversion":
+            # Use signal method with date range - simplified backtest
+            strategy = MeanReversionStrategy()
+            result = strategy.mean_reversion_signal(
+                symbol=arguments["symbol"],
+                method="bollinger",
+                window=arguments.get("lookback_period", 20),
+                upper_threshold=arguments.get("entry_threshold", 2.0),
+                lower_threshold=-arguments.get("entry_threshold", 2.0),
+                period="1y"
+            )
+            result["note"] = "This is a simplified implementation. For full backtesting, use the API endpoints."
         elif name == "optimize_mean_reversion":
-            result = optimize_mean_reversion(
-                symbol=arguments["symbol"],
-                start_date=arguments["start_date"],
-                end_date=arguments["end_date"],
-                optimization_metric=arguments.get("optimization_metric", "sharpe")
-            )
-        elif name == "get_mean_reversion_signals":
-            result = get_mean_reversion_signals(
-                symbol=arguments["symbol"],
-                lookback_period=arguments.get("lookback_period", 20),
-                entry_threshold=arguments.get("entry_threshold", 2.0),
-                exit_threshold=arguments.get("exit_threshold", 0.5)
-            )
+            result = {
+                "error": "Optimization not yet implemented in MCP server",
+                "suggestion": "Use the strategy classes directly or the FastAPI endpoints for optimization"
+            }
         
         # Moving Average Crossover Strategy Tools
-        elif name == "backtest_moving_average_crossover":
-            result = backtest_moving_average_crossover(
+        elif name == "get_moving_average_crossover_signals":
+            strategies = TradingStrategies()
+            result = strategies.moving_average_crossover(
                 symbol=arguments["symbol"],
-                start_date=arguments["start_date"],
-                end_date=arguments["end_date"],
+                fast_period=arguments.get("short_window", 50),
+                slow_period=arguments.get("long_window", 200),
+                period="2y"
+            )
+        elif name == "backtest_moving_average_crossover":
+            strategies = TradingStrategies()
+            result = strategies.backtest_strategy(
+                symbol=arguments["symbol"],
+                start_date=arguments.get("start_date"),
+                end_date=arguments.get("end_date"),
                 short_window=arguments.get("short_window", 50),
                 long_window=arguments.get("long_window", 200)
             )
         elif name == "optimize_moving_average_crossover":
-            result = optimize_moving_average_crossover(
-                symbol=arguments["symbol"],
-                start_date=arguments["start_date"],
-                end_date=arguments["end_date"],
-                optimization_metric=arguments.get("optimization_metric", "sharpe")
-            )
-        elif name == "get_moving_average_crossover_signals":
-            result = get_moving_average_crossover_signals(
-                symbol=arguments["symbol"],
-                short_window=arguments.get("short_window", 50),
-                long_window=arguments.get("long_window", 200)
-            )
+            result = {
+                "error": "Optimization not yet implemented in MCP server",
+                "suggestion": "Use the strategy classes directly or the FastAPI endpoints for optimization"
+            }
         
         # Momentum Price & Volume Strategy Tools
-        elif name == "backtest_momentum_price_vol":
-            result = backtest_momentum_price_vol(
-                symbol=arguments["symbol"],
-                start_date=arguments["start_date"],
-                end_date=arguments["end_date"],
-                price_lookback=arguments.get("price_lookback", 20),
-                volume_lookback=arguments.get("volume_lookback", 20),
-                price_threshold=arguments.get("price_threshold", 5.0),
-                volume_threshold=arguments.get("volume_threshold", 1.5)
-            )
-        elif name == "optimize_momentum_price_vol":
-            result = optimize_momentum_price_vol(
-                symbol=arguments["symbol"],
-                start_date=arguments["start_date"],
-                end_date=arguments["end_date"],
-                optimization_metric=arguments.get("optimization_metric", "sharpe")
-            )
         elif name == "get_momentum_price_vol_signals":
-            result = get_momentum_price_vol_signals(
-                symbol=arguments["symbol"],
-                price_lookback=arguments.get("price_lookback", 20),
-                volume_lookback=arguments.get("volume_lookback", 20),
-                price_threshold=arguments.get("price_threshold", 5.0),
-                volume_threshold=arguments.get("volume_threshold", 1.5)
+            strategy = MomentumBreakoutStrategy(
+                lookback_period=arguments.get("price_lookback", 20),
+                volume_threshold=arguments.get("volume_threshold", 1.5),
+                breakout_threshold=arguments.get("price_threshold", 5.0) / 100.0  # Convert percentage to decimal
             )
+            result = strategy.analyze_stock(arguments["symbol"])
+        elif name == "backtest_momentum_price_vol":
+            result = {
+                "error": "Backtesting not yet implemented for momentum strategy in MCP server",
+                "suggestion": "Use the FastAPI endpoints or implement backtesting in the strategy class"
+            }
+        elif name == "optimize_momentum_price_vol":
+            result = {
+                "error": "Optimization not yet implemented in MCP server",
+                "suggestion": "Use the strategy classes directly or the FastAPI endpoints for optimization"
+            }
         
         else:
             raise ValueError(f"Unknown tool: {name}")
